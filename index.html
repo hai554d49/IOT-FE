@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home - Hệ thống điều khiển thiết bị và đo cảm biến</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- Font Awesome CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Liên kết tệp CSS riêng -->
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        dark: '#0F172A',
+                        card: '#FFFFFF',
+                        temp: '#FF7D00',
+                        humidity: '#1677FF',
+                        light: '#FAAD14',
+                        success: '#10B981', 
+                        danger: '#EF4444', 
+                        warning: '#F59E0B',
+                        info: '#3B82F6'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-inter bg-slate-50 h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- ================= SIDEBAR ================= -->
+        <div class="w-64 bg-dark text-white p-5 flex flex-col shrink-0">
+            <div class="flex items-center gap-2 mb-8 mt-2">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <i class="fa fa-home"></i>
+                </div>
+                <span class="text-xl font-bold">SmartHome</span>
+            </div>
+
+            <nav class="flex flex-col gap-2 flex-1">
+                <a href="#" id="nav-dashboard" class="flex items-center gap-3 p-3 rounded-lg bg-primary/20 text-white font-medium transition-all">
+                    <i class="fa fa-home w-5"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" id="nav-datasensor" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition-all">
+                    <i class="fa fa-database w-5"></i>
+                    <span>Data Sensor</span>
+                </a>
+                <a href="#" id="nav-history" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition-all">
+                    <i class="fa fa-history w-5"></i>
+                    <span>Action History</span>
+                </a>
+                <a href="#" id="nav-profile" class="flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 text-slate-300 font-medium transition-all">
+                    <i class="fa fa-user w-5"></i>
+                    <span>Profile</span>
+                </a>
+
+                <div class="mt-auto">
+                    <div class="p-4 bg-white/5 rounded-xl flex items-center gap-3">
+                        <img src="https://picsum.photos/id/1005/200/200" class="w-10 h-10 rounded-full" alt="Avatar" />
+                        <div>
+                            <p class="font-medium">Nguyễn Văn A</p>
+                            <p class="text-xs text-green-400">Trực tuyến</p>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- ================= MAIN CONTENT AREA ================= -->
+        <div class="flex-1 overflow-y-auto relative bg-slate-50">
+            
+            <!-- VIEW 1: DASHBOARD -->
+            <div id="view-dashboard" class="p-6">
+                <div class="mb-6 flex items-center justify-between">
+                    <div>
+                        <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-dark">Chào buổi sáng! 👋</h1>
+                        <p class="text-slate-500 mt-1">Thông tin nhà của bạn hôm nay</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <button id="notification-btn" class="w-10 h-10 rounded-xl bg-white card-shadow flex items-center justify-center relative hover:bg-slate-50 transition-all">
+                                <i class="fa fa-bell text-slate-600"></i>
+                                <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full items-center justify-center">0</span>
+                            </button>
+
+                            <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-2xl card-shadow border border-slate-100 z-50 p-4">
+                                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                                    <h4 class="font-bold text-dark">Thông báo</h4>
+                                    <span class="text-xs text-primary font-medium cursor-pointer" id="mark-all-read">Đã đọc tất cả</span>
+                                </div>
+                                <div id="notification-list" class="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thẻ chỉ số môi trường -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl p-6 text-white card-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-white/80 text-sm mb-1">Nhiệt độ</p>
+                                <p id="temp-value" class="text-4xl font-bold">24.5°C</p>
+                                <p class="text-white/80 text-sm mt-2">Phòng khách</p>
+                            </div>
+                            <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                                <i class="fa fa-thermometer-half text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-6 text-white card-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-white/80 text-sm mb-1">Độ ẩm</p>
+                                <p id="humidity-value" class="text-4xl font-bold">58%</p>
+                                <p class="text-white/80 text-sm mt-2">Phòng bếp</p>
+                            </div>
+                            <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                                <i class="fa fa-tint text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl p-6 text-white card-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-white/80 text-sm mb-1">Ánh sáng</p>
+                                <p id="light-value" class="text-4xl font-bold">720 Lux</p>
+                                <p class="text-white/80 text-sm mt-2">Phòng ngủ</p>
+                            </div>
+                            <div class="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                                <i class="fa fa-sun-o text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Biểu đồ tổng hợp cả 3 cảm biến -->
+                <div class="bg-white rounded-2xl p-6 card-shadow mb-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-dark">Biểu đồ tổng hợp thông số môi trường</h3>
+                        <div class="flex gap-2">
+                            <button id="btn-today" class="px-3 py-1 text-sm bg-primary text-white rounded-lg transition-all">Hôm nay</button>
+                            <button id="btn-week" class="px-3 py-1 text-sm bg-slate-100 text-slate-600 rounded-lg transition-all">Tuần này</button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full h-[340px]">
+                        <canvas id="environmentChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Điều khiển thiết bị (LED01, LED02) -->
+                <div class="bg-white rounded-2xl p-6 card-shadow mt-5">
+                    <h3 class="text-xl font-bold text-dark mb-4">Điều khiển thiết bị</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">Hệ thống LED</p>
+                            
+                            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                <div class="flex items-center gap-3">
+                                    <div id="icon-led-01" class="w-10 h-10 rounded-lg flex items-center justify-center bg-yellow-400 text-white transition-all">
+                                        <i class="fa fa-lightbulb-o"></i>
+                                    </div>
+                                    <span>LED01</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="toggle-led-01" checked class="sr-only peer device-toggle" data-name="LED01" data-icon="fa-lightbulb-o" data-target="icon-led-01" data-active-bg="bg-yellow-400" data-active-text="text-white">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <p class="text-sm font-medium text-slate-500 uppercase tracking-wider">&nbsp;</p>
+
+                            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                                <div class="flex items-center gap-3">
+                                    <div id="icon-led-02" class="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-200 text-slate-400 transition-all">
+                                        <i class="fa fa-lightbulb-o"></i>
+                                    </div>
+                                    <span>LED02</span>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="toggle-led-02" class="sr-only peer device-toggle" data-name="LED02" data-icon="fa-lightbulb-o" data-target="icon-led-02" data-active-bg="bg-yellow-400" data-active-text="text-white">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: DATA SENSOR -->
+            <div id="view-datasensor" class="p-8 hidden">
+                <div class="mb-8">
+                    <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-slate-800">Lịch sử dữ liệu cảm biến</h1>
+                    <p class="text-slate-500 mt-1">Tra cứu và quản lý các thông số môi trường đã được ghi nhận</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-4 card-shadow mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center flex-1 min-w-[300px] border border-slate-200 rounded-xl overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                        <select id="sensor-type-filter" class="bg-slate-50 border-none outline-none py-3 px-4 text-slate-700 font-medium cursor-pointer border-r border-slate-200 h-full">
+                            <option value="all">Tất cả cảm biến</option>
+                            <option value="temperature">Nhiệt độ (°C)</option>
+                            <option value="humidity">Độ ẩm (%)</option>
+                            <option value="light">Ánh sáng (Lux)</option>
+                        </select>
+                        <input type="text" id="sensor-search-input" placeholder="Nhập từ khóa hoặc thời gian (VD: 2026, 10:15)..." class="flex-1 bg-transparent border-none outline-none py-3 px-4 text-slate-700 placeholder-slate-400">
+                        <button id="sensor-search-btn" class="bg-primary text-white px-6 py-3 hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium">
+                            <i class="fa fa-search"></i> Tìm kiếm
+                        </button>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button id="refresh-btn" class="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
+                            <i class="fa fa-refresh"></i> Làm mới
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl card-shadow overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full min-w-[800px] text-left border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-5 font-semibold w-24">ID</th>
+                                    <th class="p-5 font-semibold">Loại Cảm Biến</th>
+                                    <th class="p-5 font-semibold">Giá Trị Đo</th>
+                                    <th class="p-5 font-semibold">Thời Gian Đo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensor-table-body" class="text-slate-700 text-sm divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                        <p id="sensor-pagination-info" class="text-sm text-slate-500">Hiển thị dữ liệu ghi nhận</p>
+                        
+                        <!-- Tùy chọn số lượng bản ghi hiển thị trên trang cho Data Sensor -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-slate-500">Số bản ghi/trang:</span>
+                            <select id="sensor-page-size" class="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-sm text-slate-700 outline-none focus:border-primary cursor-pointer font-medium">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                            </select>
+                        </div>
+
+                        <div id="sensor-pagination-buttons" class="flex items-center gap-1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 3: ACTION HISTORY -->
+            <div id="view-history" class="p-8 hidden">
+                <div class="mb-8">
+                    <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-slate-800">Lịch sử hành động</h1>
+                    <p class="text-slate-500 mt-1">Kiểm soát lệnh Bật/Tắt thiết bị và trạng thái phản hồi từ phần cứng</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-4 card-shadow mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center flex-1 min-w-[300px] border border-slate-200 rounded-xl overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                        <select id="history-action-filter" class="bg-slate-50 border-none outline-none py-3 px-4 text-slate-700 font-medium cursor-pointer border-r border-slate-200 h-full">
+                            <option value="all">Mọi hành động</option>
+                            <option value="on">BẬT</option>
+                            <option value="off">TẮT</option>
+                        </select>
+                        <select id="history-status-filter" class="bg-slate-50 border-none outline-none py-3 px-4 text-slate-700 font-medium cursor-pointer border-r border-slate-200 h-full">
+                            <option value="all">Mọi Status</option>
+                            <option value="success">Success</option>
+                            <option value="fail">Fail</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                        <input type="text" id="history-search-input" placeholder="Tìm kiếm tên thiết bị hoặc chuỗi thời gian (VD: 2026)..." class="flex-1 bg-transparent border-none outline-none py-3 px-4 text-slate-700 placeholder-slate-400">
+                        <button id="history-search-btn" class="bg-primary text-white px-6 py-3 hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium">
+                            <i class="fa fa-search"></i> Tìm kiếm
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl card-shadow overflow-hidden">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full min-w-[900px] text-left border-collapse">
+                            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-5 font-semibold w-20">ID</th>
+                                    <th class="p-5 font-semibold">Thiết bị</th>
+                                    <th class="p-5 font-semibold text-center">Hành động</th>
+                                    <th class="p-5 font-semibold text-center">Trạng thái (Status)</th>
+                                    <th class="p-5 font-semibold">Người thực hiện</th>
+                                    <th class="p-5 font-semibold">Thời gian lệnh</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body" class="text-slate-700 text-sm divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                        <p id="history-pagination-info" class="text-sm text-slate-500">Hiển thị lịch sử thao tác</p>
+                        
+                        <!-- Tùy chọn số lượng bản ghi hiển thị trên trang cho Action History -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-slate-500">Số bản ghi/trang:</span>
+                            <select id="history-page-size" class="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-sm text-slate-700 outline-none focus:border-primary cursor-pointer font-medium">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                            </select>
+                        </div>
+
+                        <div id="history-pagination-buttons" class="flex items-center gap-1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 4: PROFILE -->
+            <div id="view-profile" class="p-8 hidden">
+                <div class="mb-8">
+                    <h1 class="text-[clamp(1.5rem,3vw,2.2rem)] font-bold text-slate-800">Hồ sơ cá nhân</h1>
+                    <p class="text-slate-500 mt-1">Thông tin sinh viên và các liên kết dự án Smart Home</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="bg-white rounded-2xl card-shadow p-6 flex flex-col items-center text-center">
+                        <div class="relative mb-4">
+                            <img src="https://picsum.photos/id/1005/300/300" class="w-32 h-32 rounded-full object-cover border-4 border-primary/20 shadow-lg" alt="Profile Picture" />
+                            <span class="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></span>
+                        </div>
+
+                        <h2 class="text-2xl font-bold text-slate-800">Khuất Quang Hải</h2>
+                        <p class="text-primary font-medium text-sm mt-1">INT14149-13-01</p>
+
+                        <div class="w-full border-t border-slate-100 my-6"></div>
+
+                        <div class="w-full space-y-3">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-left mb-2">Liên kết dự án</p>
+                            
+                            <a href="https://example.com/bao-cao-smart-home.pdf" target="_blank" class="flex items-center justify-between p-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors group">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa fa-file-pdf-o text-lg"></i>
+                                    <span>Báo cáo dự án (PDF)</span>
+                                </div>
+                                <i class="fa fa-external-link opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </a>
+
+                            <a href="https://github.com/username/smart-home-project" target="_blank" class="flex items-center justify-between p-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-medium transition-colors group">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa fa-github text-xl"></i>
+                                    <span>GitHub Repository</span>
+                                </div>
+                                <i class="fa fa-external-link opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </a>
+
+                            <a href="https://figma.com/@username/smart-home-ui" target="_blank" class="flex items-center justify-between p-3.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl font-medium transition-colors group">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa fa-figma text-lg"></i>
+                                    <span>Figma Design System</span>
+                                </div>
+                                <i class="fa fa-external-link opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Bảng thông tin chi tiết -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl card-shadow p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                            <i class="fa fa-id-card text-primary"></i> Thông tin chi tiết
+                        </h3>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Mã sinh viên (MSV)</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">BB23DCAT086</p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Lớp học</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">D23CQAT01-B</p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Email liên hệ</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">kquanghai123@gmail.com</p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Số điện thoại</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">0342712619</p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Trường</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">Học viện Công nghệ Bưu chính Viễn thông</p>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-400 uppercase">Chuyên ngành</label>
+                                <p class="p-3 bg-slate-50 rounded-xl text-slate-800 font-medium border border-slate-100">An toàn thông tin</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 space-y-1">
+                            <label class="text-xs font-semibold text-slate-400 uppercase">Mô tả dự án</label>
+                            <p class="p-4 bg-slate-50 rounded-xl text-slate-600 text-sm leading-relaxed border border-slate-100">
+                                Hệ thống Smart Home giúp quản lý thiết bị điện từ xa, theo dõi trực tiếp biểu đồ thời tiết môi trường (Nhiệt độ, Độ ẩm, Ánh sáng) và tra cứu lịch sử thao tác từ phần cứng.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Import tệp JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
